@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>👥 Users</h1>
+    <div class="muted">{% if role=='admin' %}Manage directory accounts: roles, account lockouts, MFA, and PIM eligibility{% else %}Read-only directory view (Administrator role required for modifications){% endif %}</div>
+  </div>
+  <input type="text" class="quick-filter" style="max-width:280px;margin-bottom:0" placeholder="⚡ Search users by name, role, email..." data-table-filter="#users-table">
+</div>
+
+<div class="card">
+  <div class="table-wrap"><table id="users-table">
+    <tr><th>User</th><th>Email</th><th>Role</th><th>MFA</th><th>Status</th><th>PIM eligible</th><th>Last login</th><th></th></tr>
+    {% for u in users %}
+    <tr>
+      <td><b>{{ u.username }}</b></td>
+      <td class="small">{{ u.email }}</td>
+      <td><span class="role-badge role-{{ u.role }}">{{ u.role }}</span></td>
+      <td>{% if u.mfa_enabled %}<span class="badge b-ok">On</span>{% else %}<span class="badge b-warn">Not registered</span>{% endif %}</td>
+      <td>{% if not u.is_active %}<span class="badge b-bad">Disabled</span>
+          {% elif u.locked_until and u.locked_until > now %}<span class="badge b-bad">🔒 Locked</span>
+          {% else %}<span class="badge b-ok">Active</span>{% endif %}</td>
+      <td>{{ '✔' if u.pim_eligible else '-' }}</td>
+      <td class="small">{{ u.last_login or 'Never' }}</td>
+      <td><a class="btn sm ghost" href="{{ url_for('admin_user_detail', uid=u.id) }}">{{ 'Manage' if role=='admin' else 'View' }}</a></td>
+    </tr>
+    {% endfor %}
+  </table></div>
+</div>
+{% endblock %}

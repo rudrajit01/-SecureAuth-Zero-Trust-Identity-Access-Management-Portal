@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}PIM{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Privileged Identity Management</h1>
+  <div class="muted">Mitigate standing administrator privileges with Just-In-Time (JIT) access and step-up authentication</div></div></div>
+
+<div class="grid g2">
+  <div class="card">
+    <span class="concept">PIM · Just-In-Time · Least privilege</span>
+    {% if pim %}
+      <h3>Temporary admin access is ACTIVE</h3>
+      <div class="timer" id="pim-timer" data-endtime="{{ pim.end_time }}">{{ remaining }} min remaining</div>
+      <dl class="kv" style="margin:14px 0">
+        <dt>Role</dt><dd><span class="role-badge role-admin">admin</span></dd>
+        <dt>Started</dt><dd>{{ pim.start_time }}</dd>
+        <dt>Expires</dt><dd>{{ pim.end_time }}</dd>
+        <dt>Justification</dt><dd>{{ pim.justification }}</dd>
+      </dl>
+      <form method="post">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="deactivate">
+        <button class="btn warn">Task complete — Deactivate Admin Role</button>
+      </form>
+    {% elif user.role == 'admin' %}
+      <h3>You have permanent Administrator privileges</h3>
+      <p class="muted">As an administrator, you can audit and revoke all active PIM sessions below. To manage PIM eligibility for users, visit the <a href="{{ url_for('admin_users') }}">Users</a> page.</p>
+    {% elif user.pim_eligible %}
+      <h3>Activate Privileged Role</h3>
+      <p class="small muted">You are <b>eligible</b> for administrator privileges. Provide a valid business justification and pass step-up MFA to activate.</p>
+      <form method="post" autocomplete="off">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="activate">
+        <label>Business Justification (reason for elevated access)</label>
+        <input type="text" name="justification" placeholder="e.g. Unlock locked user account - Incident #1024" required>
+        <div class="row">
+          <div><label>Duration</label>
+            <select name="minutes">
+              {% for m in [15, 30, 60, 120, 240] if m <= max_minutes %}<option value="{{ m }}" {{ 'selected' if m==30 }}>{{ m }} minutes</option>{% endfor %}
+            </select></div>
+          <div><label>MFA code (step-up verification)</label>
+            <input type="text" name="code" class="code-input" style="font-size:18px!important;letter-spacing:6px" maxlength="6" inputmode="numeric" required></div>
+        </div>
+        <button class="btn block">Activate Admin Role</button>
+      </form>
+    {% else %}
+      <h3>Not Eligible for PIM Elevation</h3>
+      <p class="muted">Contact a system administrator to request PIM role eligibility.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Why Privileged Identity Management?</h3>
+    <ul class="reasons" style="font-size:13.5px">
+      <li><b>Standing access is a security risk:</b> Permanent administrator accounts significantly increase the blast radius if compromised.</li>
+      <li><b>Just-In-Time (JIT) access:</b> Privileges are granted only for the requested duration and automatically expire.</li>
+      <li><b>Step-up MFA &amp; Justification:</b> Requires business rationale and immediate multi-factor re-verification.</li>
+      <li><b>Full Audit Trail:</b> Every activation is logged to SIEM telemetry with security alerts.</li>
+    </ul>
+    <h3 style="margin-top:18px">My Activation History</h3>
+    <div class="table-wrap"><table>
+      <tr><th>Start</th><th>End</th><th>Status</th></tr>
+      {% for h in history %}<tr><td class="small">{{ h.start_time }}</td><td class="small">{{ h.end_time }}</td>
+        <td><span class="badge {{ {'active':'b-ok','expired':'b-grey','revoked':'b-bad'}[h.status] }}">{{ h.status }}</span></td></tr>
+      {% else %}<tr><td colspan="3" class="empty">No activations recorded yet</td></tr>{% endfor %}
+    </table></div>
+  </div>
+</div>
+
+{% if all_acts is not none %}
+<div class="card" style="margin-top:20px">
+  <h3>All PIM Activations (Administrator View)</h3>
+  <div class="table-wrap"><table>
+    <tr><th>User</th><th>Role</th><th>Justification</th><th>Start</th><th>End</th><th>Status</th><th></th></tr>
+    {% for a in all_acts %}
+    <tr><td>{{ a.username }}</td><td><span class="role-badge role-admin">{{ a.role }}</span></td><td class="details small">{{ a.justification }}</td>
+      <td class="small">{{ a.start_time }}</td><td class="small">{{ a.end_time }}</td>
+      <td><span class="badge {{ {'active':'b-ok','expired':'b-grey','revoked':'b-bad'}[a.status] }}">{{ a.status }}</span></td>
+      <td>{% if a.status=='active' %}<form method="post" class="inline" data-confirm="Revoke administrator access for this user immediately?">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="revoke">
+        <input type="hidden" name="pid" value="{{ a.id }}"><button class="btn sm danger">Revoke</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="7" class="empty">No activations found</td></tr>{% endfor %}
+  </table></div>
+</div>
+{% endif %}
+{% endblock %}

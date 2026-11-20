@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Conditional Access{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>⚙️ Conditional Access &amp; Security Policies</h1>
+  <div class="muted">"If condition, then control": Policy rules evaluated at sign-in (modeled on Microsoft Entra Conditional Access)</div></div></div>
+
+<div class="grid g2">
+  <div class="card">
+    <form method="post">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      {% for key, label, lo, hi in meta %}
+      <label for="{{ key }}">{{ label }}</label>
+      <input type="number" id="{{ key }}" name="{{ key }}" value="{{ values[key] }}" min="{{ lo }}" max="{{ hi }}" required>
+      {% endfor %}
+      <button class="btn block">Save policies</button>
+    </form>
+    <form method="post" data-confirm="Reset all security policies to their default values?">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="reset">
+      <button class="btn ghost block" style="margin-top:8px">Reset to defaults</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Sign-in Decision Flow</h3>
+    <ol class="reasons" style="font-size:13.5px;line-height:1.8">
+      <li>Verify password (bcrypt salted hash). Failed attempts increment the failure counter; reaching <b>{{ values.max_failed_attempts }}</b> failures triggers an account lockout for <b>{{ values.lockout_minutes }} min</b>.</li>
+      <li><b>Risk score</b> evaluation (0-100):
+        <ul>
+          <li>Unrecognized device: <b>+30</b></li>
+          <li>Unrecognized location: <b>+25</b></li>
+          <li>Foreign country (outside India): <b>+20</b></li>
+          <li>Unusual hours ({{ values.unusual_hour_start }}:00 to {{ values.unusual_hour_end }}:00): <b>+20</b></li>
+          <li>Recent failed sign-in attempts: <b>+15</b></li>
+        </ul></li>
+      <li>Risk ≥ <b>{{ values.block_risk_threshold }}</b> → HIGH → {{ '<b>BLOCK</b>'|safe if values.block_high_risk=='1' else 'MFA required' }}</li>
+      <li>Risk ≥ <b>{{ values.mfa_risk_threshold }}</b> → MEDIUM → <b>MFA required</b></li>
+      <li>MFA not registered → <b>MFA enrollment enforced</b></li>
+      <li>Admin/Manager → {{ '<b>Mandatory MFA</b>'|safe if values.always_mfa_privileged=='1' else 'standard rules' }}</li>
+      <li>Low risk + trusted device → <b>Allow</b> (seamless sign-in)</li>
+    </ol>
+    <div class="alert alert-info small" style="margin-top:12px">All policy modifications are logged in the audit trail with <b>high</b> severity for compliance and governance accountability.</div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ u.username }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><a href="{{ url_for('admin_users') }}" class="small">← Users</a>
+    <h1>{{ u.username }} <span class="role-badge role-{{ u.role }}">{{ u.role }}</span></h1>
+    <div class="muted">{{ u.email }} · Joined {{ u.created_at }}</div></div>
+</div>
+
+<div class="grid g2">
+  <div class="card">
+    <h3>Account status</h3>
+    <dl class="kv">
+      <dt>Status</dt><dd>{% if not u.is_active %}<span class="badge b-bad">Disabled</span>{% elif u.locked_until and u.locked_until > now %}<span class="badge b-bad">Locked till {{ u.locked_until[11:] }}</span>{% else %}<span class="badge b-ok">Active</span>{% endif %}</dd>
+      <dt>MFA</dt><dd>{{ 'Enabled' if u.mfa_enabled else 'Not registered' }}</dd>
+      <dt>Failed attempts</dt><dd>{{ u.failed_attempts }}</dd>
+      <dt>PIM eligible</dt><dd>{{ 'Yes' if u.pim_eligible else 'No' }}</dd>
+      <dt>Last login</dt><dd>{{ u.last_login or '-' }}</dd>
+    </dl>
+
+    {% if role == 'admin' %}
+    <h3 style="margin-top:20px">Admin actions</h3>
+    <form method="post" class="row" style="margin-bottom:14px">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="role">
+      <div><label>Role (RBAC)</label><select name="role">{% for r in roles %}<option {{ 'selected' if r==u.role }}>{{ r }}</option>{% endfor %}</select></div>
+      <button class="btn">Update role</button>
+    </form>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      {% for action, label, cls, confirm in [
+          ('unlock', '🔓 Unlock', 'ghost', ''),
+          ('pim', ('Remove PIM eligibility' if u.pim_eligible else '⏱️ Make PIM eligible'), 'ghost', ''),
+          ('reset_mfa', '📱 Reset MFA (phone lost)', 'warn', 'Reset MFA for this user? They will be required to re-register on next sign-in.'),
+          ('toggle_active', ('Enable account' if not u.is_active else '⛔ Disable account'), ('ok' if not u.is_active else 'danger'), 'Change account status?')] %}
+      <form method="post" class="inline" {% if confirm %}data-confirm="{{ confirm }}"{% endif %}>
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="{{ action }}">
+        <button class="btn sm {{ cls }}">{{ label }}</button>
+      </form>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <span class="concept">Encryption demo</span>
+    <h3>Sensitive data: database vs decrypted</h3>
+    <label>Phone number (stored encrypted in database)</label>
+    <div class="enc-wrap">
+      <div class="enc">{{ u.phone_enc or '(empty)' }}</div>
+      {% if u.phone_enc %}
+      <button type="button" class="copy-btn" data-copy="{{ u.phone_enc }}">Copy</button>
+      {% endif %}
+    </div>
+    <label>Phone number (decrypted{% if role!='admin' %}, masked for Manager role{% endif %})</label>
+    <div><b>{{ phone or '-' }}</b></div>
+    <label>Address</label>
+    <div>{{ address or '-' }}</div>
+    <label>MFA secret key (stored encrypted in database)</label>
+    <div class="enc-wrap">
+      <div class="enc">{{ (u.mfa_secret_enc or '(not registered)')[:80] }}{% if u.mfa_secret_enc %}…{% endif %}</div>
+      {% if u.mfa_secret_enc %}
+      <button type="button" class="copy-btn" data-copy="{{ u.mfa_secret_enc }}">Copy</button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="grid g2" style="margin-top:20px">
+  <div class="card">
+    <h3>Trusted devices</h3>
+    {% for d in devices %}<div class="small" style="padding:6px 0;border-bottom:1px solid var(--line)">💻 {{ d.user_agent }} · <span class="muted">last {{ d.last_seen }}</span></div>{% else %}<div class="muted small">None</div>{% endfor %}
+    <h3 style="margin-top:16px">Known locations</h3>
+    {% for l in locations %}<span class="badge b-grey" style="margin:0 6px 6px 0">📍 {{ l.location }}</span>{% else %}<div class="muted small">None</div>{% endfor %}
+  </div>
+  <div class="card">
+    <h3>Recent activity</h3>
+    <div class="table-wrap"><table>
+      {% for e in events %}<tr><td class="small" style="white-space:nowrap">{{ e.ts[5:16] }}</td><td><span class="badge sev-{{ e.severity }}">{{ e.event }}</span></td><td class="small details">{{ e.details[:80] }}</td></tr>
+      {% else %}<tr><td class="empty">No recent activity recorded</td></tr>{% endfor %}
+    </table></div>
+  </div>
+</div>
+{% endblock %}

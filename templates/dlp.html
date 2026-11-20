@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}DLP Scanner{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>🔍 DLP Scanner</h1>
+  <div class="muted">Data Loss Prevention: Inspect files and content for sensitive information prior to external sharing (Microsoft Purview concept)</div></div></div>
+
+<div class="grid g2">
+  <div class="card">
+    <span class="concept">Data classification · Sensitivity labels</span>
+    <h3>Paste Text or Upload File</h3>
+    <div class="sample-chips">
+      <span class="muted small" style="align-self:center">⚡ Quick Test Samples:</span>
+      <button type="button" class="sample-chip" data-dlp-sample="aadhaar">Aadhaar + Card</button>
+      <button type="button" class="sample-chip" data-dlp-sample="internal">Internal Meeting</button>
+      <button type="button" class="sample-chip" data-dlp-sample="clean">Public Notice</button>
+      <button type="button" class="sample-chip" data-dlp-sample="clear">Clear</button>
+    </div>
+    <form method="post" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <textarea id="dlp-text" name="text" placeholder="Paste text to inspect here... e.g.&#10;Customer: John Doe, PAN ABCPK1234F, Mobile 9876543210"></textarea>
+
+      <!-- Drag & Drop Zone -->
+      <label>Or select a file <span class="muted">(.txt .csv .log .json .md .docx · max 2 MB)</span></label>
+      <div class="drop-zone" id="dlp-dropzone" onclick="document.getElementById('dlp-file-input').click()">
+        <span class="drop-zone-icon">📁</span>
+        <strong>Click to browse</strong> or drag &amp; drop file here
+        <div class="hint">Supported: .txt, .csv, .log, .json, .md, .docx (Max: 2MB)</div>
+        <input type="file" id="dlp-file-input" name="file" accept=".txt,.csv,.log,.json,.md,.docx">
+        <div id="dlp-file-info" class="file-info-pill"></div>
+      </div>
+
+      <button class="btn block">Scan Content</button>
+    </form>
+    <p class="small muted" style="margin-top:14px">🔒 Privacy: Raw scan content is never persisted; only masked findings and metadata are logged.</p>
+  </div>
+
+  <div class="card">
+    <h3>Detected Information Types</h3>
+    <div class="table-wrap"><table>
+      <tr><th>Data type</th><th>Label</th><th>Validation</th></tr>
+      <tr><td>Aadhaar number</td><td><span class="badge lbl-Highly">Highly Confidential</span></td><td class="small">Verhoeff checksum</td></tr>
+      <tr><td>Credit / Debit card</td><td><span class="badge lbl-Highly">Highly Confidential</span></td><td class="small">Luhn checksum</td></tr>
+      <tr><td>Password in text</td><td><span class="badge lbl-Highly">Highly Confidential</span></td><td class="small">Pattern</td></tr>
+      <tr><td>PAN card</td><td><span class="badge lbl-Confidential">Confidential</span></td><td class="small">Format + 4th char type</td></tr>
+      <tr><td>Passport, IFSC code</td><td><span class="badge lbl-Confidential">Confidential</span></td><td class="small">Format</td></tr>
+      <tr><td>Mobile number, Email</td><td><span class="badge lbl-Internal">Internal</span></td><td class="small">Format</td></tr>
+    </table></div>
+    <p class="small muted" style="margin-top:14px">Algorithmic checksum validation eliminates <b>false positives</b>, ensuring random digits are not erroneously flagged as identifiers.</p>
+  </div>
+</div>
+
+{% if result %}
+<div class="card" style="margin-top:20px">
+  <div class="page-head" style="margin-bottom:12px">
+    <div>
+      <h2 style="margin:0">Scan result: <span class="muted" style="font-weight:400">{{ source }}</span></h2>
+      <div class="small muted">{{ result.chars }} characters scanned · {{ result.total }} sensitive item(s) detected</div>
+    </div>
+    <span class="badge label-big lbl-{{ result.label.split()[0] }}">🏷️ {{ result.label }}</span>
+  </div>
+  <div class="alert {{ {0:'alert-success',1:'alert-info',2:'alert-warning',3:'alert-danger'}[result.level] }}">
+    <div>
+      <b>Policy action:</b> {{ result.action }}<br><span class="small">{{ result.reason }}</span>
+    </div>
+  </div>
+  {% for name, f in result.findings.items() %}
+  <div class="finding lvl{{ f.level }}">
+    <div><b>{{ name }}</b> <span class="badge b-grey">{{ f.count }}x</span>
+      <div class="mono small muted" style="margin-top:4px">{{ f.samples|join('   ·   ') }}</div></div>
+  </div>
+  {% else %}<div class="empty">✅ No sensitive data detected. This content is classified as <b>Public</b>.</div>{% endfor %}
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:20px">
+  <div class="page-head" style="margin-bottom:8px">
+    <h3 style="margin:0">Scan History {% if role in ['admin','manager'] %}<span class="muted small">(All users)</span>{% endif %}</h3>
+    <input type="text" class="quick-filter" style="max-width:280px;margin-bottom:0" placeholder="⚡ Filter scan records..." data-table-filter="#dlp-history-table">
+  </div>
+  <div class="table-wrap"><table id="dlp-history-table">
+    <tr><th>Time</th><th>User</th><th>Source</th><th>Label</th><th>Findings (masked)</th></tr>
+    {% for h in history %}
+    <tr><td class="small">{{ h.ts }}</td><td>{{ h.username }}</td><td class="small">{{ h.source }}</td>
+      <td><span class="badge lbl-{{ h.label.split()[0] }}">{{ h.label }}</span></td>
+      <td class="small">{% for k, v in (h.summary|fromjson).items() %}{{ k }} ×{{ v.count }}{% if not loop.last %}, {% endif %}{% else %}-{% endfor %}</td></tr>
+    {% else %}<tr><td colspan="5" class="empty">No scan history recorded yet</td></tr>{% endfor %}
+  </table></div>
+</div>
+{% endblock %}

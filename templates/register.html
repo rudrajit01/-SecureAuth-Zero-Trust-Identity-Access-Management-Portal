@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+{% block auth %}
+<h1>Create account</h1>
+<p class="muted">New accounts are provisioned with the default <b>User</b> role (Principle of Least Privilege).</p>
+<form method="post" autocomplete="off">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <label for="username">Username</label>
+  <input type="text" id="username" name="username" value="{{ form.get('username','') }}" required>
+  <label for="email">Email</label>
+  <input type="email" id="email" name="email" value="{{ form.get('email','') }}" required>
+  <label for="phone">Mobile number <span class="muted">(optional, stored encrypted at rest)</span></label>
+  <input type="text" id="phone" name="phone" value="{{ form.get('phone','') }}" placeholder="98XXXXXXXX">
+  <label for="password">Password</label>
+  <input type="password" id="password" name="password" data-strength="pw-bar" required>
+  <div class="strength"><div id="pw-bar"></div></div>
+  <div class="hint"><span id="pw-bar-txt"></span> · Min 8 characters, uppercase, lowercase, numbers, and special characters</div>
+  <label for="confirm">Confirm password</label>
+  <input type="password" id="confirm" name="confirm" required>
+  <button class="btn block">Create account</button>
+</form>
+<p class="muted small" style="text-align:center;margin-top:14px">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></p>
+{% endblock %}

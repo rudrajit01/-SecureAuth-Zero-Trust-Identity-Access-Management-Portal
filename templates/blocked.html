@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Sign-in blocked{% endblock %}
+{% block auth %}
+<div class="blocked-icon">⛔</div>
+<h1 style="text-align:center">Sign-in blocked</h1>
+<p class="muted" style="text-align:center">Your credentials were valid, but the <b>Conditional Access policy</b> blocked this sign-in attempt due to <b>high risk</b>.</p>
+<div class="card" style="padding:14px">
+  <div class="risk risk-high">
+    <div class="risk-meter" style="--v:{{ score }}"><span>{{ score }}</span></div>
+    <div>
+      <b>Risk score: {{ score }}/100</b> <span class="badge b-bad">HIGH</span>
+      <div class="small muted">Location: {{ location }}</div>
+      <ul class="reasons">{% for r in reasons %}<li>{{ r }}</li>{% endfor %}</ul>
+    </div>
+  </div>
+</div>
+<p class="small muted">A <b>security alert</b> has been generated for administrators. If this attempt was legitimate, please sign in from a trusted network/device or contact your system administrator.</p>
+<a class="btn block" href="{{ url_for('login') }}" style="text-align:center">← Back to sign-in</a>
+{% endblock %}

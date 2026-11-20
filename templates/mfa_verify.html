@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Verify MFA{% endblock %}
+{% block auth %}
+<span class="concept">🔐 Conditional Access · MFA Challenge</span>
+<h1>Verify Your Identity</h1>
+<p class="muted">Welcome back, <b>{{ username }}</b>. Please enter the 6-digit code from your authenticator app.</p>
+
+<div class="card" style="padding:14px;margin:14px 0">
+  <div class="risk risk-{{ level }}">
+    <div class="risk-meter" style="--v:{{ score }}"><span>{{ score }}</span></div>
+    <div>
+      <b>Sign-in risk: <span class="badge {{ {'low':'b-ok','medium':'b-warn','high':'b-bad'}[level] }}">{{ level|upper }}</span></b>
+      {% if reasons %}
+      <ul class="reasons">{% for r in reasons %}<li>{{ r }}</li>{% endfor %}</ul>
+      {% else %}
+      <div class="small muted">Privileged roles (Admin / Manager) require secondary MFA verification for every sign-in.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<form method="post" autocomplete="off">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <input type="text" name="code" class="code-input" inputmode="numeric" maxlength="6" placeholder="••••••" required autofocus>
+  <button class="btn block">Verify</button>
+</form>
+<p class="small muted" style="text-align:center;margin-top:12px"><a href="{{ url_for('login') }}">← Return to sign-in</a></p>
+{% endblock %}

@@ -1,0 +1,22 @@
+ABC Finance Pvt Ltd - Customer KYC Records (INTERNAL USE ONLY)
+==============================================================
+NOTE: All data below is synthetic/mock data created solely for DLP demonstration purposes.
+
+1. Name: Rahul Sharma
+   Aadhaar: 2345 6789 0124
+   PAN: ABCPS1234K
+   Mobile: +91 9876543210
+   Email: rahul.sharma@example.com
+   Card: 4111 1111 1111 1111
+   Bank IFSC: SBIN0001234
+
+2. Name: Priya Verma
+   Aadhaar: 4987-6543-2102
+   PAN: BNZPV5678L
+   Passport: K1234567
+   Mobile: 9123456780
+
+Server login details -> password: Welcome@2026
+
+Random numbers (should NOT be detected due to checksum validation failure):
+Order ID 123456789012 , Invoice 4111111111111112

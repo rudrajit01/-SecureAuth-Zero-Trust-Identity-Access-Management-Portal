@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block auth %}
+<h1>Sign in</h1>
+<p class="muted">Sign in to your SecureAuth account</p>
+<form method="post" autocomplete="off">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <label for="username">Username</label>
+  <input type="text" id="username" name="username" value="{{ last_user or '' }}" required autofocus>
+  <label for="password">Password</label>
+  <input type="password" id="password" name="password" required>
+
+  {% if demo_mode %}
+  <details class="demo-box">
+    <summary>🧪 Demo: Simulate sign-in location &amp; time</summary>
+    <p class="hint">Production systems derive location from IP intelligence. For demonstration, select parameters below to test <b>Conditional Access</b> and <b>risk-based authentication</b>.</p>
+    <div class="row">
+      <div>
+        <label for="location">Location</label>
+        <select id="location" name="location">
+          {% for l in demo_locations %}<option>{{ l }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="hour">Sign-in time</label>
+        <select id="hour" name="hour">
+          <option value="">Current time</option>
+          {% for h in range(24) %}<option value="{{ h }}">{{ '%02d'|format(h) }}:00</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+  </details>
+  {% endif %}
+
+  <button class="btn block">Sign in →</button>
+</form>
+<p class="muted small" style="text-align:center;margin-top:14px">Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
+{% if demo_mode %}
+<div class="demo-creds">
+  <b>⚡ Click demo account to auto-fill:</b>
+  <div class="demo-chips">
+    <button type="button" class="demo-chip" onclick="fillDemo('admin', 'Admin@123')">
+      <span><code>admin</code> / <code>Admin@123</code></span>
+      <span class="role-badge role-admin">Admin</span>
+    </button>
+    <button type="button" class="demo-chip" onclick="fillDemo('manager1', 'Manager@123')">
+      <span><code>manager1</code> / <code>Manager@123</code></span>
+      <span class="role-badge role-manager">Manager (PIM)</span>
+    </button>
+    <button type="button" class="demo-chip" onclick="fillDemo('user1', 'User@123')">
+      <span><code>user1</code> / <code>User@123</code></span>
+      <span class="role-badge role-user">User</span>
+    </button>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

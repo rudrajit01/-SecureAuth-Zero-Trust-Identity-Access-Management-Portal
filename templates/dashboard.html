@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Welcome, {{ user.username }} 👋</h1>
+    <div class="muted">Assigned Role: <span class="role-badge role-{{ role }}">{{ role }}</span>
+      {% if pim %}<span class="badge b-warn">Elevated via PIM</span>{% endif %}
+      · Signed in: {{ session.login_at }}</div>
+  </div>
+</div>
+
+<div class="grid g3">
+  <!-- Current session risk -->
+  <div class="card">
+    <span class="concept">Identity Protection</span>
+    <h3>Current Sign-in Risk</h3>
+    {% set lvl = session.login_level or 'low' %}
+    <div class="risk risk-{{ lvl }}">
+      <div class="risk-meter" style="--v:{{ session.login_score or 0 }}"><span>{{ session.login_score or 0 }}</span></div>
+      <div>
+        <span class="badge {{ {'low':'b-ok','medium':'b-warn','high':'b-bad'}[lvl] }}">{{ lvl|upper }} RISK</span>
+        <div class="small muted" style="margin-top:6px">📍 {{ session.login_location }}</div>
+        <div class="small muted">🔑 {{ session.login_method }}</div>
+      </div>
+    </div>
+    {% if session.login_reasons %}<ul class="reasons">{% for r in session.login_reasons %}<li>{{ r }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+
+  <!-- Security posture -->
+  <div class="card">
+    <span class="concept">Zero Trust posture</span>
+    <h3>Account Security Posture</h3>
+    <dl class="kv">
+      <dt>MFA</dt><dd>{% if user.mfa_enabled %}<span class="badge b-ok">✔ Enabled (TOTP)</span>{% else %}<span class="badge b-bad">Off</span>{% endif %}</dd>
+      <dt>Password</dt><dd><span class="badge b-ok">✔ bcrypt hashed</span></dd>
+      <dt>Personal data</dt><dd><span class="badge b-ok">✔ AES encrypted</span></dd>
+      <dt>Session timeout</dt><dd>Auto sign-out upon inactivity</dd>
+      <dt>PIM eligible</dt><dd>{{ 'Yes' if user.pim_eligible else 'No' }}</dd>
+    </dl>
+  </div>
+
+  <!-- Access by role -->
+  <div class="card">
+    <span class="concept">RBAC · Least privilege</span>
+    <h3>Role Permissions &amp; Access</h3>
+    <ul class="reasons" style="font-size:13.5px">
+      <li>✔ Dashboard, Profile, DLP Scanner</li>
+      <li>{{ '✔' if role in ['admin','manager'] else '✖' }} Audit logs &amp; security alerts</li>
+      <li>{{ '✔' if role in ['admin','manager'] else '✖' }} View users list</li>
+      <li>{{ '✔' if role == 'admin' else '✖' }} Manage users (role, unlock, reset MFA)</li>
+      <li>{{ '✔' if role == 'admin' else '✖' }} Manage Conditional Access policies</li>
+    </ul>
+  </div>
+</div>
+
+{% if stats %}
+<h2 style="margin-top:28px">🛰️ Security Operations Overview</h2>
+<div class="grid g4" style="margin-bottom:20px">
+  <div class="card stat info"><span class="num">{{ stats.users }}</span><span class="lbl">Total users ({{ stats.mfa }} MFA enabled)</span></div>
+  <div class="card stat ok"><span class="num">{{ stats.logins_today }}</span><span class="lbl">Successful logins today</span></div>
+  <div class="card stat bad"><span class="num">{{ stats.failed_today }}</span><span class="lbl">Failed sign-ins today</span></div>
+  <div class="card stat warn"><span class="num">{{ stats.alerts }}</span><span class="lbl">High / critical alerts</span></div>
+  <div class="card stat bad"><span class="num">{{ stats.blocked }}</span><span class="lbl">Risky logins blocked</span></div>
+  <div class="card stat warn"><span class="num">{{ stats.locked }}</span><span class="lbl">Currently locked accounts</span></div>
+  <div class="card stat warn"><span class="num">{{ stats.dlp }}</span><span class="lbl">DLP incidents detected</span></div>
+  <div class="card stat info"><span class="num">{{ stats.pim }}</span><span class="lbl">Active temporary admins (PIM)</span></div>
+</div>
+
+<div class="grid g2">
+  <div class="card">
+    <div class="page-head" style="margin-bottom:8px">
+      <h3>Sign-in Activity (Last 7 Days)</h3>
+      <div class="legend"><span><i style="background:var(--ok)"></i>Success</span><span><i style="background:var(--bad)"></i>Failed / Blocked</span></div>
+    </div>
+    <div class="chart">
+      {% for c in chart %}
+      <div class="col"><div class="bars">
+        <div class="bar ok" style="height:{{ (c.ok / chart_max * 85)|round(1) }}%"><em>{{ c.ok }}</em></div>
+        <div class="bar bad" style="height:{{ (c.bad / chart_max * 85)|round(1) }}%"><em>{{ c.bad }}</em></div>
+      </div></div>
+      {% endfor %}
+    </div>
+    <div class="chart-x">{% for c in chart %}<span>{{ c.day }}</span>{% endfor %}</div>
+
+    {% set total = risk_dist.low + risk_dist.medium + risk_dist.high %}
+    <h3 style="margin-top:22px">Successful logins: risk distribution</h3>
+    {% for lvl, color in [('low','var(--ok)'),('medium','var(--warn)'),('high','var(--bad)')] %}
+    <div class="small" style="margin-top:6px">{{ lvl|capitalize }} risk: <b>{{ risk_dist[lvl] }}</b></div>
+    <div class="hbar"><div style="width:{{ (risk_dist[lvl] / (total or 1) * 100)|round(1) }}%;background:{{ color }}"></div></div>
+    {% endfor %}
+  </div>
+
+  <div class="card">
+    <div class="page-head" style="margin-bottom:8px">
+      <h3>🚨 Recent security alerts</h3>
+      <a class="small" href="{{ url_for('audit', severity='alerts') }}">View all →</a>
+    </div>
+    {% if alerts %}
+    <div class="table-wrap"><table>
+      <tr><th>Time</th><th>Event</th><th>User</th></tr>
+      {% for a in alerts %}
+      <tr>
+        <td class="small">{{ a.ts[5:16] }}</td>
+        <td><span class="badge sev-{{ a.severity }}">{{ a.event }}</span><div class="small muted" style="margin-top:3px">{{ a.details[:90] }}</div></td>
+        <td>{{ a.username or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </table></div>
+    {% else %}<div class="empty">No security alerts found 🎉</div>{% endif %}
+  </div>
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:20px">
+  <div class="page-head" style="margin-bottom:8px">
+    <h3 style="margin:0">My Recent Activity</h3>
+    <input type="text" class="quick-filter" style="max-width:240px;margin-bottom:0" placeholder="⚡ Filter activity..." data-table-filter="#my-activity-table">
+  </div>
+  <div class="table-wrap"><table id="my-activity-table">
+    <tr><th>Time</th><th>Event</th><th>Details</th><th>Location</th></tr>
+    {% for e in my_events %}
+    <tr><td class="small">{{ e.ts }}</td><td><span class="badge sev-{{ e.severity }}">{{ e.event }}</span></td>
+        <td class="details small">{{ e.details }}</td><td class="small">{{ e.location or '-' }}</td></tr>
+    {% endfor %}
+  </table></div>
+</div>
+{% endblock %}

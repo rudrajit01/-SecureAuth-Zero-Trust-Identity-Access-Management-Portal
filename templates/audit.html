@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Security Alerts' if args.get('severity')=='alerts' else 'Audit Logs' }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ '🚨 Security Alerts' if args.get('severity')=='alerts' else '📜 Audit Logs' }}</h1>
+    <div class="muted">Comprehensive audit trail of security telemetry: identities, timestamps, source context, and actions (SIEM concept · Compliance)</div>
+  </div>
+  <a class="btn ghost" href="{{ url_for('audit_export', **args) }}">⬇ Export CSV</a>
+</div>
+
+<div class="card">
+  <form method="get" class="row">
+    <div><label>Search</label><input type="text" name="q" value="{{ args.get('q','') }}" placeholder="username / details / IP"></div>
+    <div><label>Event</label>
+      <select name="event"><option value="">All events</option>
+        {% for e in events %}<option {{ 'selected' if args.get('event')==e }}>{{ e }}</option>{% endfor %}</select></div>
+    <div><label>Severity</label>
+      <select name="severity"><option value="">All</option>
+        {% for s in ['alerts','info','low','medium','high','critical'] %}
+        <option value="{{ s }}" {{ 'selected' if args.get('severity')==s }}>{{ 'High + Critical (alerts)' if s=='alerts' else s|capitalize }}</option>{% endfor %}</select></div>
+    <button class="btn">Filter</button>
+    <a class="btn ghost" href="{{ url_for('audit') }}">Reset</a>
+  </form>
+</div>
+
+<div class="card">
+  <div class="page-head" style="margin-bottom:10px">
+    <div class="small muted">{{ logs|length }} records{% if logs|length == 300 %} (latest 300){% endif %}</div>
+    <input type="text" class="quick-filter" style="max-width:280px;margin-bottom:0" placeholder="⚡ Live table search..." data-table-filter="#audit-table">
+  </div>
+  <div class="table-wrap"><table id="audit-table">
+    <tr><th>#</th><th>Time</th><th>User</th><th>Event</th><th>Severity</th><th>Details</th><th>IP / Location</th><th>Risk</th></tr>
+    {% for l in logs %}
+    <tr>
+      <td class="small muted">{{ l.id }}</td>
+      <td class="small" style="white-space:nowrap">{{ l.ts }}</td>
+      <td>{{ l.username or '-' }}</td>
+      <td class="mono small">{{ l.event }}</td>
+      <td><span class="badge sev-{{ l.severity }}">{{ l.severity }}</span></td>
+      <td class="details small">{{ l.details }}</td>
+      <td class="small">{{ l.ip }}<br><span class="muted">{{ l.location or '' }}</span></td>
+      <td>{% if l.risk_score is not none %}<b style="color:{{ 'var(--bad)' if l.risk_score>=60 else ('var(--warn)' if l.risk_score>=30 else 'var(--ok)') }}">{{ l.risk_score }}</b>{% endif %}</td>
+    </tr>
+    {% else %}<tr><td colspan="8" class="empty">No audit records found</td></tr>{% endfor %}
+  </table></div>
+</div>
+{% endblock %}

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}SecureAuth{% endblock %} · SecureAuth</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% if user %}
+<!-- Mobile Topbar -->
+<header class="mobile-topbar">
+  <div class="brand">
+    <span class="logo">🛡️</span>
+    <div><strong>SecureAuth</strong><small>Zero Trust IAM</small></div>
+  </div>
+  <button id="mobile-menu-btn" class="mobile-menu-btn" aria-label="Toggle navigation menu">☰</button>
+</header>
+<div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo">🛡️</span>
+      <div><strong>SecureAuth</strong><small>Zero Trust IAM</small></div>
+    </div>
+    <nav>
+      <div class="nav-label">Main</div>
+      <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint=='dashboard' }}">📊 Dashboard</a>
+      <a href="{{ url_for('profile') }}" class="{{ 'active' if request.endpoint=='profile' }}">👤 My Profile &amp; Devices</a>
+      <a href="{{ url_for('dlp_scan') }}" class="{{ 'active' if request.endpoint=='dlp_scan' }}">🔍 DLP Scanner</a>
+      {% if user.pim_eligible or role == 'admin' %}
+      <a href="{{ url_for('pim') }}" class="{{ 'active' if request.endpoint=='pim' }}">⏱️ PIM (Temp Admin)</a>
+      {% endif %}
+      {% if role in ['admin','manager'] %}
+      <div class="nav-label">Security Operations</div>
+      <a href="{{ url_for('audit') }}" class="{{ 'active' if request.endpoint=='audit' and request.args.get('severity')!='alerts' }}">📜 Audit Logs</a>
+      <a href="{{ url_for('audit', severity='alerts') }}" class="{{ 'active' if request.args.get('severity')=='alerts' }}">🚨 Security Alerts</a>
+      <a href="{{ url_for('admin_users') }}" class="{{ 'active' if request.endpoint in ['admin_users','admin_user_detail'] }}">👥 Users</a>
+      {% endif %}
+      {% if role == 'admin' %}
+      <div class="nav-label">Administration</div>
+      <a href="{{ url_for('admin_policies') }}" class="{{ 'active' if request.endpoint=='admin_policies' }}">⚙️ Conditional Access</a>
+      {% endif %}
+    </nav>
+    <div class="sidebar-controls">
+      <button id="theme-toggle" class="theme-toggle-btn" type="button">☀️ <span class="theme-txt">Theme</span></button>
+      <span class="role-badge role-{{ role }}">{{ role }}</span>
+    </div>
+    <div class="side-user">
+      <div class="avatar">{{ user.username[0]|upper }}</div>
+      <div class="who">
+        <strong>{{ user.username }}</strong>
+        <span class="muted small">{% if pim %}PIM Elevated{% else %}{{ role|capitalize }}{% endif %}</span>
+      </div>
+      <form method="post" action="{{ url_for('logout') }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn-logout" title="Sign out">⏻</button>
+      </form>
+    </div>
+  </aside>
+  <main class="content">
+    {% if pim %}
+    <div class="pim-banner">
+      <span>⏱️ Temporary <b>ADMIN</b> access is active until <b>{{ pim.end_time[11:16] }}</b> (PIM - Just-In-Time access).</span>
+      <a href="{{ url_for('pim') }}">Manage Role</a>
+    </div>
+    {% endif %}
+    {% include "_flash.html" %}
+    {% block content %}{% endblock %}
+    <footer class="foot">SecureAuth · Zero Trust Architecture · Security, Compliance &amp; Identity Fundamentals</footer>
+  </main>
+</div>
+{% else %}
+<div class="auth-wrap">
+  <div class="auth-side">
+    <div class="brand big"><span class="logo">🛡️</span><div><strong>SecureAuth</strong><small>Zero Trust Identity &amp; Access Management</small></div></div>
+    <h2>"Never trust, always verify."</h2>
+    <ul class="principles">
+      <li><b>Verify explicitly</b>: Always authenticate and authorize based on all available data points including identity, location, device, and service context</li>
+      <li><b>Least privilege</b>: Limit user access with Just-In-Time and Just-Enough-Access (JIT/JEA) and role-based policies</li>
+      <li><b>Assume breach</b>: Minimize blast radius with end-to-end encryption, audit telemetry, and DLP</li>
+    </ul>
+  </div>
+  <div class="auth-main">
+    <div style="width:100%;max-width:440px;display:flex;justify-content:flex-end;margin-bottom:12px">
+      <button id="theme-toggle" class="theme-toggle-btn" type="button" style="color:var(--text);border-color:var(--line)">☀️ <span class="theme-txt">Theme</span></button>
+    </div>
+    <div class="auth-card">
+      {% include "_flash.html" %}
+      {% block auth %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% endif %}
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
